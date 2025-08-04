@@ -99,14 +99,10 @@
                             </div>
                         </div>
                         <div>
-                            <h2 class="text-xl font-semibold mb-3 text-slate-900">3. Paskirstymo būdas</h2>
-                            <fieldset class="flex gap-x-6">
-                                <div class="flex items-center"><input id="distributeSmart" name="distribution_method" type="radio" class="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600" checked><label for="distributeSmart" class="ml-3 block text-sm font-medium leading-6 text-gray-900">"Protingas" paskirstymas</label></div>
-                                <div class="flex items-center"><input id="distributeManually" name="distribution_method" type="radio" class="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600"><label for="distributeManually" class="ml-3 block text-sm font-medium leading-6 text-gray-900">Rankiniu būdu</label></div>
-                            </fieldset>
-                        </div>
-                        <div id="manualDistributionContainer" class="hidden space-y-2">
-                            <!-- Manual distribution inputs will appear here -->
+                            <h2 class="text-xl font-semibold mb-3 text-slate-900">3. Paskirstykite sumas</h2>
+                             <div id="manualDistributionContainer" class="space-y-2">
+                                <!-- Manual distribution inputs will appear here -->
+                            </div>
                         </div>
                         <button id="autoAllocateBtn" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 transition-all shadow-md">
                             Paskirstyti
@@ -192,8 +188,6 @@
         const manualBudgetInput = document.getElementById('manualBudgetAmount');
         const clearAllBtn = document.getElementById('clearAllBtn');
         const manualDistributionContainer = document.getElementById('manualDistributionContainer');
-        const distributeSmartRadio = document.getElementById('distributeSmart');
-        const distributeManuallyRadio = document.getElementById('distributeManually');
 
         // --- State ---
         let selectedInvoices = new Map();
@@ -382,49 +376,16 @@
             }
 
             const amountsPerSupplier = new Map();
-            if (distributeSmartRadio.checked) {
-                let suppliersData = selectedSupplierIds.map(id => {
-                    const totalDebt = mockData.invoices
-                        .filter(inv => inv.supplierId === id)
-                        .reduce((sum, inv) => sum + inv.amount, 0);
-                    return { id, totalDebt };
-                });
-
-                let budgetLeft = totalBudget;
-                let stillOwing = [...suppliersData];
-                
-                while (budgetLeft > 0.01 && stillOwing.length > 0) {
-                    let share = budgetLeft / stillOwing.length;
-                    budgetLeft = 0;
-                    const nextOwing = [];
-                    stillOwing.forEach(s => {
-                        const currentPayment = amountsPerSupplier.get(s.id) || 0;
-                        const remainingDebt = s.totalDebt - currentPayment;
-                        const payment = Math.min(remainingDebt, share);
-                        
-                        amountsPerSupplier.set(s.id, currentPayment + payment);
-
-                        if (remainingDebt > payment) {
-                            nextOwing.push(s);
-                        } else {
-                            budgetLeft += share - payment;
-                        }
-                    });
-                    stillOwing = nextOwing;
-                }
-
-            } else { // Manual distribution
-                let manuallyEnteredTotal = 0;
-                for (const id of selectedSupplierIds) {
-                    const input = document.querySelector(`#manual_dist_supplier_${id}`);
-                    const amount = parseFloat(input.value) || 0;
-                    amountsPerSupplier.set(id, amount);
-                    manuallyEnteredTotal += amount;
-                }
-                if (Math.abs(manuallyEnteredTotal - totalBudget) > 0.01) {
-                    alert(`Paskirstyta suma (${formatCurrency(manuallyEnteredTotal)}) nesutampa su skirta suma (${formatCurrency(totalBudget)}).`);
-                    return;
-                }
+            let manuallyEnteredTotal = 0;
+            for (const id of selectedSupplierIds) {
+                const input = document.querySelector(`#manual_dist_supplier_${id}`);
+                const amount = parseFloat(input.value) || 0;
+                amountsPerSupplier.set(id, amount);
+                manuallyEnteredTotal += amount;
+            }
+            if (Math.abs(manuallyEnteredTotal - totalBudget) > 0.01) {
+                alert(`Paskirstyta suma (${formatCurrency(manuallyEnteredTotal)}) nesutampa su skirta suma (${formatCurrency(totalBudget)}).`);
+                return;
             }
 
             selectedInvoices.clear();
@@ -464,13 +425,12 @@
             clearAllSelections();
         }
         
-        function updateManualDistributionUI() {
+        function updateAutoDistributionUI() {
             const selectedSupplierIds = Array.from(document.querySelectorAll('#autoSupplierContainer .supplier-checkbox:checked'))
                 .map(cb => parseInt(cb.dataset.supplierId));
             
             manualDistributionContainer.innerHTML = '';
-            if (distributeManuallyRadio.checked && selectedSupplierIds.length > 0) {
-                manualDistributionContainer.classList.remove('hidden');
+            if (selectedSupplierIds.length > 0) {
                 selectedSupplierIds.forEach(id => {
                     const div = document.createElement('div');
                     div.className = 'grid grid-cols-3 gap-4 items-center';
@@ -480,8 +440,6 @@
                     `;
                     manualDistributionContainer.appendChild(div);
                 });
-            } else {
-                manualDistributionContainer.classList.add('hidden');
             }
         }
 
@@ -499,10 +457,8 @@
             }
         });
         
-        document.getElementById('autoSupplierContainer').addEventListener('change', updateManualDistributionUI);
-        distributeSmartRadio.addEventListener('change', updateManualDistributionUI);
-        distributeManuallyRadio.addEventListener('change', updateManualDistributionUI);
-
+        document.getElementById('autoSupplierContainer').addEventListener('change', updateAutoDistributionUI);
+        
         // --- Initial Load ---
         populateSuppliers();
         switchMode('manual');
