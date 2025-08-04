@@ -156,6 +156,14 @@
                     <div id="successMessage" class="hidden mt-4 p-3 bg-green-100 text-green-800 border border-green-200 rounded-lg text-center">
                         Mokėjimų ruošinys sėkmingai suformuotas!
                     </div>
+
+                    <!-- History Section -->
+                    <div class="mt-8">
+                        <h3 class="text-xl font-semibold mb-4 text-slate-900 border-b pb-3">Istorija</h3>
+                        <div id="historyContainer" class="space-y-2 mt-4 max-h-60 custom-scrollbar overflow-y-auto">
+                            <p class="text-slate-500 text-sm text-center">Istorija tuščia.</p>
+                        </div>
+                    </div>
                 </div>
             </aside>
         </div>
@@ -169,7 +177,8 @@
             ],
             invoices: [
                 { id: 101, supplierId: 1, docNumber: 'LAG0019251', date: '2025-07-16', amount: 350.56 }, { id: 102, supplierId: 1, docNumber: 'LAG0019240', date: '2025-07-15', amount: 121.00 }, { id: 103, supplierId: 1, docNumber: 'LAG0019305', date: '2025-07-20', amount: 1250.70 }, { id: 201, supplierId: 2, docNumber: 'TRU0372100', date: '2025-07-07', amount: 2169.15 }, { id: 301, supplierId: 3, docNumber: 'VAT250425', date: '2025-06-05', amount: 79.13 }, { id: 401, supplierId: 4, docNumber: 'LYT-58412', date: '2025-07-18', amount: 5480.00 }, { id: 402, supplierId: 4, docNumber: 'LYT-58499', date: '2025-07-21', amount: 3215.50 }, { id: 501, supplierId: 5, docNumber: 'DB-2025-07-01', date: '2025-07-01', amount: 15700.00 }, { id: 502, supplierId: 5, docNumber: 'DB-2025-07-15', amount: 890.25 }, { id: 503, supplierId: 5, docNumber: 'DB-2025-07-19', amount: 4500.00 }, { id: 601, supplierId: 6, docNumber: 'EWA-001', date: '2025-06-10', amount: 12000.00 }, { id: 602, supplierId: 6, docNumber: 'EWA-002', date: '2025-06-25', amount: 14000.00 }, { id: 701, supplierId: 7, docNumber: 'IVA-101', date: '2025-05-30', amount: 28000.00 },
-            ]
+            ],
+            paymentHistory: []
         };
 
         // --- DOM Elements ---
@@ -189,6 +198,7 @@
         const autoBudgetInput = document.getElementById('autoBudgetAmount');
         const clearAllBtn = document.getElementById('clearAllBtn');
         const manualDistributionContainer = document.getElementById('manualDistributionContainer');
+        const historyContainer = document.getElementById('historyContainer');
 
         // --- State ---
         let selectedInvoices = new Map();
@@ -250,7 +260,6 @@
             if (checkbox.checked) {
                 let amountToPay = invoice.amount;
 
-                // Budget capping logic for manual mode
                 if (currentMode === 'manual') {
                     const budget = parseFloat(manualBudgetInput.value) || 0;
                     if (budget > 0) {
@@ -301,7 +310,7 @@
                     <div class="flex justify-between items-center border-t pt-4 mt-4"><span class="font-bold text-slate-600">Likutis:</span><span class="font-bold text-2xl ${remaining < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(remaining)}</span></div>
                 `;
                  generateBtn.disabled = totalSelectedFromInvoices <= 0;
-            } else { // Auto mode
+            } else {
                  const budget = parseFloat(autoBudgetInput.value) || 0;
                  let distributedTotal = 0;
                  const distributionInputs = document.querySelectorAll('#manualDistributionContainer input');
@@ -317,7 +326,6 @@
                 generateBtn.disabled = totalSelectedFromInvoices <= 0;
             }
            
-
             const supplierTotals = new Map();
             selectedInvoices.forEach(inv => {
                 const currentTotal = supplierTotals.get(inv.supplierId) || 0;
@@ -467,12 +475,60 @@
             }
         }
 
+        function populateHistory() {
+            historyContainer.innerHTML = '';
+            if (mockData.paymentHistory.length === 0) {
+                historyContainer.innerHTML = `<p class="text-slate-500 text-sm text-center">Istorija tuščia.</p>`;
+                return;
+            }
+            mockData.paymentHistory.forEach(item => {
+                const a = document.createElement('a');
+                a.href = '#';
+                a.dataset.historyId = item.id;
+                a.className = 'block p-2 rounded-md hover:bg-slate-100 history-item';
+                a.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium text-sm text-slate-700">${item.date}</span>
+                        <span class="font-bold text-sm text-slate-800">${formatCurrency(item.totalAmount)}</span>
+                    </div>
+                `;
+                historyContainer.prepend(a); // Add new items to the top
+            });
+            document.querySelectorAll('.history-item').forEach(item => item.addEventListener('click', handleHistoryClick));
+        }
+
+        function handleHistoryClick(event) {
+            event.preventDefault();
+            const historyId = parseInt(event.currentTarget.dataset.historyId);
+            const historyItem = mockData.paymentHistory.find(item => item.id === historyId);
+            if (!historyItem) return;
+
+            switchMode('manual');
+            manualBudgetInput.value = historyItem.totalAmount;
+            
+            selectedInvoices.clear();
+            const supplierIdsToSelect = new Set();
+            historyItem.payments.forEach(p => {
+                const invoice = mockData.invoices.find(inv => inv.id === p.invoiceId);
+                if (invoice) {
+                    selectedInvoices.set(invoice.id, { ...invoice, amountToPay: p.amountPaid });
+                    supplierIdsToSelect.add(invoice.supplierId);
+                }
+            });
+
+            document.querySelectorAll('#manualSupplierContainer .supplier-checkbox').forEach(cb => {
+                cb.checked = supplierIdsToSelect.has(parseInt(cb.dataset.supplierId));
+            });
+
+            handleManualSupplierSelection();
+            updateAllSummaries();
+        }
+
         // --- Event Listeners ---
         manualModeTab.addEventListener('click', () => switchMode('manual'));
         autoModeTab.addEventListener('click', () => switchMode('auto'));
         manualBudgetInput.addEventListener('input', updateAllSummaries);
         autoBudgetInput.addEventListener('input', () => {
-             // In auto mode, changing budget should only update the summary, not the invoices
             if(currentMode === 'auto') {
                 updateAllSummaries();
             }
@@ -482,6 +538,24 @@
         clearAllBtn.addEventListener('click', clearAllSelections);
         generateBtn.addEventListener('click', () => {
             if (selectedInvoices.size > 0) {
+                let totalAmount = 0;
+                const payments = [];
+                selectedInvoices.forEach(inv => {
+                    totalAmount += inv.amountToPay;
+                    payments.push({ invoiceId: inv.id, amountPaid: inv.amountToPay });
+                });
+
+                const newHistoryItem = {
+                    id: Date.now(),
+                    date: new Date().toLocaleDateString('lt-LT'),
+                    totalAmount: totalAmount,
+                    payments: payments
+                };
+                mockData.paymentHistory.push(newHistoryItem);
+                
+                populateHistory();
+                clearAllSelections();
+
                 successMessage.classList.remove('hidden');
                 setTimeout(() => { successMessage.classList.add('hidden'); }, 4000);
             }
@@ -490,24 +564,13 @@
         document.getElementById('autoSupplierContainer').addEventListener('change', updateAutoDistributionUI);
         manualDistributionContainer.addEventListener('input', () => {
             if (currentMode === 'auto') {
-                // In auto mode, we update the summary based on distributed amounts, not selected invoices yet
-                const budget = parseFloat(autoBudgetInput.value) || 0;
-                let distributedTotal = 0;
-                const distributionInputs = document.querySelectorAll('#manualDistributionContainer input');
-                distributionInputs.forEach(input => {
-                    distributedTotal += parseFloat(input.value) || 0;
-                });
-                const remaining = budget - distributedTotal;
-                summaryContent.innerHTML = `
-                    <div class="flex justify-between items-center"><span class="font-medium text-slate-600">Skiriama suma:</span><span class="font-bold text-lg text-slate-800">${formatCurrency(budget)}</span></div>
-                    <div class="flex justify-between items-center"><span class="font-medium text-slate-600">Paskirstyta suma:</span><span class="font-bold text-lg text-blue-600">${formatCurrency(distributedTotal)}</span></div>
-                    <div class="flex justify-between items-center border-t pt-4 mt-4"><span class="font-bold text-slate-600">Likutis:</span><span class="font-bold text-2xl ${remaining < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(remaining)}</span></div>
-                `;
+                updateAllSummaries();
             }
         });
         
         // --- Initial Load ---
         populateSuppliers();
+        populateHistory();
         switchMode('manual');
     </script>
 </body>
