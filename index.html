@@ -186,6 +186,7 @@
         const autoModeContent = document.getElementById('autoModeContent');
         const autoAllocateBtn = document.getElementById('autoAllocateBtn');
         const manualBudgetInput = document.getElementById('manualBudgetAmount');
+        const autoBudgetInput = document.getElementById('autoBudgetAmount');
         const clearAllBtn = document.getElementById('clearAllBtn');
         const manualDistributionContainer = document.getElementById('manualDistributionContainer');
 
@@ -300,9 +301,12 @@
                     <div class="flex justify-between items-center border-t pt-4 mt-4"><span class="font-bold text-slate-600">Likutis:</span><span class="font-bold text-2xl ${remaining < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(remaining)}</span></div>
                 `;
             } else {
-                summaryContent.innerHTML = `
-                    <div class="flex justify-between items-center"><span class="font-medium text-slate-600">Pasirinkta sąskaitų:</span><span class="font-bold text-lg text-slate-800">${selectedInvoices.size}</span></div>
-                    <div class="flex justify-between items-center"><span class="font-medium text-slate-600">Bendra suma:</span><span class="font-bold text-2xl text-blue-600">${formatCurrency(totalSelected)}</span></div>
+                 const budget = parseFloat(autoBudgetInput.value) || 0;
+                 const remaining = budget - totalSelected;
+                 summaryContent.innerHTML = `
+                    <div class="flex justify-between items-center"><span class="font-medium text-slate-600">Skiriama suma:</span><span class="font-bold text-lg text-slate-800">${formatCurrency(budget)}</span></div>
+                    <div class="flex justify-between items-center"><span class="font-medium text-slate-600">Paskirstyta suma:</span><span class="font-bold text-lg text-blue-600">${formatCurrency(totalSelected)}</span></div>
+                    <div class="flex justify-between items-center border-t pt-4 mt-4"><span class="font-bold text-slate-600">Likutis:</span><span class="font-bold text-2xl ${remaining < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(remaining)}</span></div>
                 `;
             }
             generateBtn.disabled = totalSelected <= 0;
@@ -419,7 +423,7 @@
         function switchMode(mode) {
             currentMode = mode;
             manualModeTab.classList.toggle('tab-active', mode === 'manual');
-            autoModeTab.classList.toggle('tab-active', mode === 'auto');
+            autoModeTab.classList.toggle('tab-active', mode !== 'manual');
             manualModeContent.classList.toggle('hidden', mode !== 'manual');
             autoModeContent.classList.toggle('hidden', mode !== 'auto');
             clearAllSelections();
@@ -460,6 +464,7 @@
         manualModeTab.addEventListener('click', () => switchMode('manual'));
         autoModeTab.addEventListener('click', () => switchMode('auto'));
         manualBudgetInput.addEventListener('input', updateAllSummaries);
+        autoBudgetInput.addEventListener('input', updateAllSummaries);
         document.getElementById('manualSupplierContainer').addEventListener('change', handleManualSupplierSelection);
         autoAllocateBtn.addEventListener('click', handleAutoAllocation);
         clearAllBtn.addEventListener('click', clearAllSelections);
