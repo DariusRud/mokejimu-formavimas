@@ -289,27 +289,34 @@
         }
 
         function updateAllSummaries() {
-            let totalSelected = 0;
-            selectedInvoices.forEach(inv => totalSelected += inv.amountToPay);
+            let totalSelectedFromInvoices = 0;
+            selectedInvoices.forEach(inv => totalSelectedFromInvoices += inv.amountToPay);
             
             if (currentMode === 'manual') {
                 const budget = parseFloat(manualBudgetInput.value) || 0;
-                const remaining = budget - totalSelected;
+                const remaining = budget - totalSelectedFromInvoices;
                 summaryContent.innerHTML = `
                     <div class="flex justify-between items-center"><span class="font-medium text-slate-600">Visas biudžetas:</span><span class="font-bold text-lg text-slate-800">${formatCurrency(budget)}</span></div>
-                    <div class="flex justify-between items-center"><span class="font-medium text-slate-600">Pasirinkta suma:</span><span class="font-bold text-lg text-blue-600">${formatCurrency(totalSelected)}</span></div>
+                    <div class="flex justify-between items-center"><span class="font-medium text-slate-600">Pasirinkta suma:</span><span class="font-bold text-lg text-blue-600">${formatCurrency(totalSelectedFromInvoices)}</span></div>
                     <div class="flex justify-between items-center border-t pt-4 mt-4"><span class="font-bold text-slate-600">Likutis:</span><span class="font-bold text-2xl ${remaining < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(remaining)}</span></div>
                 `;
-            } else {
+                 generateBtn.disabled = totalSelectedFromInvoices <= 0;
+            } else { // Auto mode
                  const budget = parseFloat(autoBudgetInput.value) || 0;
-                 const remaining = budget - totalSelected;
+                 let distributedTotal = 0;
+                 const distributionInputs = document.querySelectorAll('#manualDistributionContainer input');
+                 distributionInputs.forEach(input => {
+                    distributedTotal += parseFloat(input.value) || 0;
+                 });
+                 const remaining = budget - distributedTotal;
                  summaryContent.innerHTML = `
                     <div class="flex justify-between items-center"><span class="font-medium text-slate-600">Skiriama suma:</span><span class="font-bold text-lg text-slate-800">${formatCurrency(budget)}</span></div>
-                    <div class="flex justify-between items-center"><span class="font-medium text-slate-600">Paskirstyta suma:</span><span class="font-bold text-lg text-blue-600">${formatCurrency(totalSelected)}</span></div>
+                    <div class="flex justify-between items-center"><span class="font-medium text-slate-600">Paskirstyta suma:</span><span class="font-bold text-lg text-blue-600">${formatCurrency(distributedTotal)}</span></div>
                     <div class="flex justify-between items-center border-t pt-4 mt-4"><span class="font-bold text-slate-600">Likutis:</span><span class="font-bold text-2xl ${remaining < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(remaining)}</span></div>
                 `;
+                generateBtn.disabled = totalSelectedFromInvoices <= 0;
             }
-            generateBtn.disabled = totalSelected <= 0;
+           
 
             const supplierTotals = new Map();
             selectedInvoices.forEach(inv => {
@@ -464,7 +471,12 @@
         manualModeTab.addEventListener('click', () => switchMode('manual'));
         autoModeTab.addEventListener('click', () => switchMode('auto'));
         manualBudgetInput.addEventListener('input', updateAllSummaries);
-        autoBudgetInput.addEventListener('input', updateAllSummaries);
+        autoBudgetInput.addEventListener('input', () => {
+             // In auto mode, changing budget should only update the summary, not the invoices
+            if(currentMode === 'auto') {
+                updateAllSummaries();
+            }
+        });
         document.getElementById('manualSupplierContainer').addEventListener('change', handleManualSupplierSelection);
         autoAllocateBtn.addEventListener('click', handleAutoAllocation);
         clearAllBtn.addEventListener('click', clearAllSelections);
@@ -476,6 +488,23 @@
         });
         
         document.getElementById('autoSupplierContainer').addEventListener('change', updateAutoDistributionUI);
+        manualDistributionContainer.addEventListener('input', () => {
+            if (currentMode === 'auto') {
+                // In auto mode, we update the summary based on distributed amounts, not selected invoices yet
+                const budget = parseFloat(autoBudgetInput.value) || 0;
+                let distributedTotal = 0;
+                const distributionInputs = document.querySelectorAll('#manualDistributionContainer input');
+                distributionInputs.forEach(input => {
+                    distributedTotal += parseFloat(input.value) || 0;
+                });
+                const remaining = budget - distributedTotal;
+                summaryContent.innerHTML = `
+                    <div class="flex justify-between items-center"><span class="font-medium text-slate-600">Skiriama suma:</span><span class="font-bold text-lg text-slate-800">${formatCurrency(budget)}</span></div>
+                    <div class="flex justify-between items-center"><span class="font-medium text-slate-600">Paskirstyta suma:</span><span class="font-bold text-lg text-blue-600">${formatCurrency(distributedTotal)}</span></div>
+                    <div class="flex justify-between items-center border-t pt-4 mt-4"><span class="font-bold text-slate-600">Likutis:</span><span class="font-bold text-2xl ${remaining < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(remaining)}</span></div>
+                `;
+            }
+        });
         
         // --- Initial Load ---
         populateSuppliers();
