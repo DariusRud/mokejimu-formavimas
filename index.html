@@ -25,6 +25,18 @@
             background-color: #f8fafc;
             cursor: not-allowed;
         }
+        details > summary {
+            list-style: none;
+        }
+        details > summary::-webkit-details-marker {
+            display: none;
+        }
+        details > summary .arrow {
+            transition: transform 0.2s;
+        }
+        details[open] > summary .arrow {
+            transform: rotate(90deg);
+        }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800">
@@ -129,8 +141,8 @@
                         <h2 class="text-xl font-semibold text-slate-900">Suformuoti mokėjimai pagal tiekėjus</h2>
                         <button id="clearAllBtn" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Išvalyti viską</button>
                     </div>
-                    <div id="supplierSummaryContainer" class="p-4 bg-slate-50 rounded-lg space-y-2">
-                        <p class="text-slate-500 text-center">Kol kas nieko nepasirinkta.</p>
+                    <div id="supplierSummaryContainer" class="bg-slate-50 rounded-lg space-y-1 p-2">
+                        <p class="text-slate-500 text-center p-2">Kol kas nieko nepasirinkta.</p>
                     </div>
                 </div>
             </main>
@@ -196,10 +208,10 @@
             [manualSupplierContainer, autoSupplierContainer].forEach(container => {
                 mockData.suppliers.forEach(supplier => {
                     const div = document.createElement('div');
-                    div.className = 'flex items-center';
+                    div.className = 'flex items-center p-1';
                     div.innerHTML = `
                         <input id="supplier_${container.id}_${supplier.id}" data-supplier-id="${supplier.id}" name="supplier_${container.id}" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 supplier-checkbox">
-                        <label for="supplier_${container.id}_${supplier.id}" class="ml-3 text-sm text-gray-600">${supplier.name}</label>
+                        <label for="supplier_${container.id}_${supplier.id}" class="ml-3 text-sm text-gray-600 cursor-pointer">${supplier.name}</label>
                     `;
                     container.appendChild(div);
                 });
@@ -239,7 +251,7 @@
             const paymentInput = document.querySelector(`.payment-amount-input[data-invoice-id="${invoiceId}"]`);
 
             if (checkbox.checked) {
-                selectedInvoices.set(invoiceId, { supplierId: invoice.supplierId, totalAmount: invoice.amount, amountToPay: invoice.amount });
+                selectedInvoices.set(invoiceId, { ...invoice, amountToPay: invoice.amount });
                 paymentInput.disabled = false;
                 paymentInput.value = invoice.amount.toFixed(2);
             } else {
@@ -292,14 +304,46 @@
 
             supplierSummaryContainer.innerHTML = '';
             if (supplierTotals.size === 0) {
-                supplierSummaryContainer.innerHTML = `<p class="text-slate-500 text-center">Kol kas nieko nepasirinkta.</p>`;
+                supplierSummaryContainer.innerHTML = `<p class="text-slate-500 text-center p-2">Kol kas nieko nepasirinkta.</p>`;
                 return;
             }
+
             supplierTotals.forEach((total, supplierId) => {
-                const div = document.createElement('div');
-                div.className = 'flex justify-between items-center p-2 rounded-md hover:bg-slate-100';
-                div.innerHTML = `<span class="font-medium text-slate-700">${supplierMap.get(supplierId)}</span><span class="font-bold text-slate-800">${formatCurrency(total)}</span>`;
-                supplierSummaryContainer.appendChild(div);
+                const details = document.createElement('details');
+                details.className = 'bg-white rounded-md border';
+                
+                let detailsContent = '';
+                selectedInvoices.forEach((inv, invId) => {
+                    if (inv.supplierId === supplierId) {
+                        const percentage = (inv.amountToPay / inv.amount * 100).toFixed(0);
+                        const isFullPayment = percentage >= 100;
+                        detailsContent += `
+                            <div class="grid grid-cols-3 gap-4 items-center text-sm px-4 py-2 border-t">
+                                <span class="text-slate-600 col-span-1">${inv.docNumber}</span>
+                                <span class="font-medium text-right col-span-1">${formatCurrency(inv.amountToPay)}</span>
+                                <div class="col-span-1">
+                                    <div class="w-full bg-slate-200 rounded-full h-2.5">
+                                        <div class="h-2.5 rounded-full ${isFullPayment ? 'bg-green-500' : 'bg-blue-500'}" style="width: ${percentage}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+
+                details.innerHTML = `
+                    <summary class="flex justify-between items-center p-3 cursor-pointer hover:bg-slate-100">
+                        <div class="flex items-center">
+                             <svg class="arrow w-4 h-4 text-slate-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                             <span class="font-medium text-slate-700">${supplierMap.get(supplierId)}</span>
+                        </div>
+                        <span class="font-bold text-slate-800">${formatCurrency(total)}</span>
+                    </summary>
+                    <div class="bg-slate-50">
+                        ${detailsContent}
+                    </div>
+                `;
+                supplierSummaryContainer.appendChild(details);
             });
         }
 
@@ -330,35 +374,23 @@
                 });
 
                 let budgetLeft = totalBudget;
-                let share = budgetLeft / suppliersData.length;
-                let stillOwing = [];
-
-                // First pass
-                suppliersData.forEach(s => {
-                    const payment = Math.min(s.totalDebt, share);
-                    amountsPerSupplier.set(s.id, payment);
-                    budgetLeft -= payment;
-                    if (s.totalDebt > share) {
-                        stillOwing.push(s);
-                    }
-                });
+                let stillOwing = [...suppliersData];
                 
-                // Redistribute surplus
                 while (budgetLeft > 0.01 && stillOwing.length > 0) {
-                    let extraShare = budgetLeft / stillOwing.length;
+                    let share = budgetLeft / stillOwing.length;
                     budgetLeft = 0;
                     const nextOwing = [];
                     stillOwing.forEach(s => {
-                        const currentPayment = amountsPerSupplier.get(s.id);
+                        const currentPayment = amountsPerSupplier.get(s.id) || 0;
                         const remainingDebt = s.totalDebt - currentPayment;
-                        const extraPayment = Math.min(remainingDebt, extraShare);
+                        const payment = Math.min(remainingDebt, share);
                         
-                        amountsPerSupplier.set(s.id, currentPayment + extraPayment);
+                        amountsPerSupplier.set(s.id, currentPayment + payment);
 
-                        if (remainingDebt > extraPayment) {
+                        if (remainingDebt > payment) {
                             nextOwing.push(s);
                         } else {
-                            budgetLeft += extraShare - extraPayment;
+                            budgetLeft += share - payment;
                         }
                     });
                     stillOwing = nextOwing;
@@ -391,7 +423,7 @@
                     const remainingToAllocate = amountToAllocate - allocatedAmount;
                     const amountToPay = Math.min(invoice.amount, remainingToAllocate);
                     allocatedAmount += amountToPay;
-                    selectedInvoices.set(invoice.id, { supplierId: invoice.supplierId, totalAmount: invoice.amount, amountToPay: amountToPay });
+                    selectedInvoices.set(invoice.id, { ...invoice, amountToPay: amountToPay });
                 }
             });
 
@@ -440,7 +472,7 @@
         manualModeTab.addEventListener('click', () => switchMode('manual'));
         autoModeTab.addEventListener('click', () => switchMode('auto'));
         manualBudgetInput.addEventListener('input', updateAllSummaries);
-        document.querySelectorAll('#manualSupplierContainer').forEach(c => c.addEventListener('change', handleManualSupplierSelection));
+        document.getElementById('manualSupplierContainer').addEventListener('change', handleManualSupplierSelection);
         autoAllocateBtn.addEventListener('click', handleAutoAllocation);
         clearAllBtn.addEventListener('click', clearAllSelections);
         generateBtn.addEventListener('click', () => {
@@ -450,7 +482,7 @@
             }
         });
         
-        document.querySelectorAll('#autoSupplierContainer').forEach(c => c.addEventListener('change', updateManualDistributionUI));
+        document.getElementById('autoSupplierContainer').addEventListener('change', updateManualDistributionUI);
         distributeSmartRadio.addEventListener('change', updateManualDistributionUI);
         distributeManuallyRadio.addEventListener('change', updateManualDistributionUI);
 
