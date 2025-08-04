@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patobulintas Mokėjimų Formavimo Prototipas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .tab-active {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        input[type="number"].payment-amount-input:disabled {
+            background-color: #f8fafc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-slate-900">Mokėjimų Formavimas</h1>
+            <p class="text-slate-500 mt-1">Sistema, skirta patogiam atsiskaitymų su tiekėjais valdymui.</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <main class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm">
+                
+                <div class="mb-6 border-b border-slate-200">
+                    <nav class="flex -mb-px" aria-label="Tabs">
+                        <button id="manualModeTab" class="tab-active w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm transition">
+                            Rankinis pasirinkimas
+                        </button>
+                        <button id="autoModeTab" class="w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm text-slate-500 hover:text-slate-700 hover:border-slate-300 transition">
+                            Automatinis paskirstymas
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Manual Mode -->
+                <div id="manualModeContent">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <h2 class="text-xl font-semibold mb-3 text-slate-900">1. Nurodykite biudžetą</h2>
+                            <div class="relative">
+                                <input type="number" id="manualBudgetAmount" placeholder="pvz., 100000" class="w-full p-3 pl-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">€</span>
+                            </div>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-semibold mb-3 text-slate-900">2. Pasirinkite tiekėjus</h2>
+                            <div id="manualSupplierContainer" class="p-2 border border-slate-300 rounded-lg bg-white h-24 custom-scrollbar overflow-y-auto space-y-1">
+                                <!-- Supplier checkboxes will be populated here -->
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1">Pasirinkite tiekėjus, kurių sąskaitas norite matyti.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Automatic Mode -->
+                <div id="autoModeContent" class="hidden">
+                    <div class="space-y-6">
+                        <div>
+                            <h2 class="text-xl font-semibold mb-3 text-slate-900">1. Skiriama suma</h2>
+                            <div class="relative">
+                                <input type="number" id="autoBudgetAmount" placeholder="pvz., 50000" class="w-full p-3 pl-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">€</span>
+                            </div>
+                        </div>
+                        <div>
+                             <h2 class="text-xl font-semibold mb-3 text-slate-900">2. Pasirinkite tiekėjus</h2>
+                            <div id="autoSupplierContainer" class="p-2 border border-slate-300 rounded-lg bg-white h-24 custom-scrollbar overflow-y-auto space-y-1">
+                                <!-- Supplier checkboxes will be populated here -->
+                            </div>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-semibold mb-3 text-slate-900">3. Paskirstymo būdas</h2>
+                            <fieldset class="flex gap-x-6">
+                                <div class="flex items-center"><input id="distributeSmart" name="distribution_method" type="radio" class="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600" checked><label for="distributeSmart" class="ml-3 block text-sm font-medium leading-6 text-gray-900">"Protingas" paskirstymas</label></div>
+                                <div class="flex items-center"><input id="distributeManually" name="distribution_method" type="radio" class="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600"><label for="distributeManually" class="ml-3 block text-sm font-medium leading-6 text-gray-900">Rankiniu būdu</label></div>
+                            </fieldset>
+                        </div>
+                        <div id="manualDistributionContainer" class="hidden space-y-2">
+                            <!-- Manual distribution inputs will appear here -->
+                        </div>
+                        <button id="autoAllocateBtn" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 transition-all shadow-md">
+                            Paskirstyti
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Shared Invoice List -->
+                <div class="mt-8">
+                    <h2 class="text-xl font-semibold mb-3 text-slate-900">Sąskaitų sąrašas</h2>
+                    <div id="invoiceContainer" class="border border-slate-200 rounded-lg overflow-hidden h-80 custom-scrollbar overflow-y-auto">
+                        <table class="min-w-full divide-y divide-slate-200">
+                            <thead class="bg-slate-50 sticky top-0 z-10">
+                                <tr>
+                                    <th class="p-4 w-12 text-left"></th>
+                                    <th class="p-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Tiekėjas</th>
+                                    <th class="p-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Dok. Nr.</th>
+                                    <th class="p-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Suma, €</th>
+                                    <th class="p-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Mokama suma (€)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="invoiceTableBody" class="bg-white divide-y divide-slate-200">
+                                <tr><td colspan="5" class="p-6 text-center text-slate-500">Pasirinkite tiekėjus arba naudokite automatinį paskirstymą.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Supplier specific summary -->
+                <div class="mt-8">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-xl font-semibold text-slate-900">Suformuoti mokėjimai pagal tiekėjus</h2>
+                        <button id="clearAllBtn" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Išvalyti viską</button>
+                    </div>
+                    <div id="supplierSummaryContainer" class="p-4 bg-slate-50 rounded-lg space-y-2">
+                        <p class="text-slate-500 text-center">Kol kas nieko nepasirinkta.</p>
+                    </div>
+                </div>
+            </main>
+
+            <aside class="lg:col-span-1">
+                <div class="bg-white p-6 rounded-2xl shadow-sm sticky top-8">
+                    <h2 class="text-xl font-semibold mb-4 text-slate-900 border-b pb-3">Bendra suvestinė</h2>
+                    <div id="summaryContent" class="space-y-4 mt-4">
+                       <!-- Summary content will be dynamically generated -->
+                    </div>
+                    <button id="generatePaymentsBtn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg mt-8 hover:bg-blue-700 active:bg-blue-800 transition-all shadow-md hover:shadow-lg disabled:bg-slate-300 disabled:cursor-not-allowed disabled:shadow-none">
+                        Formuoti mokėjimus
+                    </button>
+                    <div id="successMessage" class="hidden mt-4 p-3 bg-green-100 text-green-800 border border-green-200 rounded-lg text-center">
+                        Mokėjimų ruošinys sėkmingai suformuotas!
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script>
+        // --- Mock Data ---
+        const mockData = {
+            suppliers: [
+                { id: 1, name: 'UAB "Lagrenas"' }, { id: 2, name: 'UAB "Trukme"' }, { id: 3, name: 'Valstybinė augalininkystės tarnyba' }, { id: 4, name: 'UAB "Lytagra"' }, { id: 5, name: 'UAB "Dotnuva Baltic"' }, { id: 6, name: 'AB "East West Agro"' }, { id: 7, name: 'UAB "Ivabaltė"' }
+            ],
+            invoices: [
+                { id: 101, supplierId: 1, docNumber: 'LAG0019251', date: '2025-07-16', amount: 350.56 }, { id: 102, supplierId: 1, docNumber: 'LAG0019240', date: '2025-07-15', amount: 121.00 }, { id: 103, supplierId: 1, docNumber: 'LAG0019305', date: '2025-07-20', amount: 1250.70 }, { id: 201, supplierId: 2, docNumber: 'TRU0372100', date: '2025-07-07', amount: 2169.15 }, { id: 301, supplierId: 3, docNumber: 'VAT250425', date: '2025-06-05', amount: 79.13 }, { id: 401, supplierId: 4, docNumber: 'LYT-58412', date: '2025-07-18', amount: 5480.00 }, { id: 402, supplierId: 4, docNumber: 'LYT-58499', date: '2025-07-21', amount: 3215.50 }, { id: 501, supplierId: 5, docNumber: 'DB-2025-07-01', date: '2025-07-01', amount: 15700.00 }, { id: 502, supplierId: 5, docNumber: 'DB-2025-07-15', amount: 890.25 }, { id: 503, supplierId: 5, docNumber: 'DB-2025-07-19', amount: 4500.00 }, { id: 601, supplierId: 6, docNumber: 'EWA-001', date: '2025-06-10', amount: 12000.00 }, { id: 602, supplierId: 6, docNumber: 'EWA-002', date: '2025-06-25', amount: 14000.00 }, { id: 701, supplierId: 7, docNumber: 'IVA-101', date: '2025-05-30', amount: 28000.00 },
+            ]
+        };
+
+        // --- DOM Elements ---
+        const manualSupplierContainer = document.getElementById('manualSupplierContainer');
+        const autoSupplierContainer = document.getElementById('autoSupplierContainer');
+        const invoiceTableBody = document.getElementById('invoiceTableBody');
+        const summaryContent = document.getElementById('summaryContent');
+        const supplierSummaryContainer = document.getElementById('supplierSummaryContainer');
+        const generateBtn = document.getElementById('generatePaymentsBtn');
+        const successMessage = document.getElementById('successMessage');
+        const manualModeTab = document.getElementById('manualModeTab');
+        const autoModeTab = document.getElementById('autoModeTab');
+        const manualModeContent = document.getElementById('manualModeContent');
+        const autoModeContent = document.getElementById('autoModeContent');
+        const autoAllocateBtn = document.getElementById('autoAllocateBtn');
+        const manualBudgetInput = document.getElementById('manualBudgetAmount');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+        const manualDistributionContainer = document.getElementById('manualDistributionContainer');
+        const distributeSmartRadio = document.getElementById('distributeSmart');
+        const distributeManuallyRadio = document.getElementById('distributeManually');
+
+        // --- State ---
+        let selectedInvoices = new Map();
+        let currentMode = 'manual';
+        const supplierMap = new Map(mockData.suppliers.map(s => [s.id, s.name]));
+
+        // --- Functions ---
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('lt-LT', { style: 'currency', currency: 'EUR' }).format(amount);
+        }
+
+        function populateSuppliers() {
+            [manualSupplierContainer, autoSupplierContainer].forEach(container => {
+                mockData.suppliers.forEach(supplier => {
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center';
+                    div.innerHTML = `
+                        <input id="supplier_${container.id}_${supplier.id}" data-supplier-id="${supplier.id}" name="supplier_${container.id}" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 supplier-checkbox">
+                        <label for="supplier_${container.id}_${supplier.id}" class="ml-3 text-sm text-gray-600">${supplier.name}</label>
+                    `;
+                    container.appendChild(div);
+                });
+            });
+        }
+
+        function displayInvoices(invoiceList) {
+            invoiceTableBody.innerHTML = '';
+            if (invoiceList.length === 0) {
+                invoiceTableBody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-500">Pasirinkite tiekėjus arba naudokite automatinį paskirstymą.</td></tr>`;
+                return;
+            }
+
+            invoiceList.forEach(invoice => {
+                const row = document.createElement('tr');
+                const selection = selectedInvoices.get(invoice.id);
+                const isChecked = !!selection;
+                const amountToPay = isChecked ? selection.amountToPay : invoice.amount;
+                row.innerHTML = `
+                    <td class="p-4"><input type="checkbox" data-invoice-id="${invoice.id}" class="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 invoice-checkbox" ${isChecked ? 'checked' : ''}></td>
+                    <td class="p-4 text-sm text-slate-600">${supplierMap.get(invoice.supplierId) || 'N/A'}</td>
+                    <td class="p-4 font-medium">${invoice.docNumber}</td>
+                    <td class="p-4 text-right font-semibold">${formatCurrency(invoice.amount)}</td>
+                    <td class="p-4 text-right"><input type="number" step="0.01" value="${amountToPay.toFixed(2)}" data-invoice-id="${invoice.id}" class="w-28 p-1 text-right border border-slate-300 rounded-md payment-amount-input" ${!isChecked ? 'disabled' : ''}></td>
+                `;
+                invoiceTableBody.appendChild(row);
+            });
+            
+            document.querySelectorAll('.invoice-checkbox').forEach(checkbox => checkbox.addEventListener('change', handleInvoiceSelection));
+            document.querySelectorAll('.payment-amount-input').forEach(input => input.addEventListener('change', handlePaymentAmountChange));
+        }
+        
+        function handleInvoiceSelection(event) {
+            const checkbox = event.target;
+            const invoiceId = parseInt(checkbox.dataset.invoiceId);
+            const invoice = mockData.invoices.find(inv => inv.id === invoiceId);
+            const paymentInput = document.querySelector(`.payment-amount-input[data-invoice-id="${invoiceId}"]`);
+
+            if (checkbox.checked) {
+                selectedInvoices.set(invoiceId, { supplierId: invoice.supplierId, totalAmount: invoice.amount, amountToPay: invoice.amount });
+                paymentInput.disabled = false;
+                paymentInput.value = invoice.amount.toFixed(2);
+            } else {
+                selectedInvoices.delete(invoiceId);
+                paymentInput.disabled = true;
+            }
+            updateAllSummaries();
+        }
+
+        function handlePaymentAmountChange(event) {
+            const input = event.target;
+            const invoiceId = parseInt(input.dataset.invoiceId);
+            const invoice = mockData.invoices.find(inv => inv.id === invoiceId);
+            let newAmount = parseFloat(input.value);
+
+            if (isNaN(newAmount) || newAmount < 0) newAmount = 0;
+            if (newAmount > invoice.amount) newAmount = invoice.amount;
+            input.value = newAmount.toFixed(2);
+            if (selectedInvoices.has(invoiceId)) {
+                selectedInvoices.get(invoiceId).amountToPay = newAmount;
+            }
+            updateAllSummaries();
+        }
+
+        function updateAllSummaries() {
+            let totalSelected = 0;
+            selectedInvoices.forEach(inv => totalSelected += inv.amountToPay);
+            
+            if (currentMode === 'manual') {
+                const budget = parseFloat(manualBudgetInput.value) || 0;
+                const remaining = budget - totalSelected;
+                summaryContent.innerHTML = `
+                    <div class="flex justify-between items-center"><span class="font-medium text-slate-600">Visas biudžetas:</span><span class="font-bold text-lg text-slate-800">${formatCurrency(budget)}</span></div>
+                    <div class="flex justify-between items-center"><span class="font-medium text-slate-600">Pasirinkta suma:</span><span class="font-bold text-lg text-blue-600">${formatCurrency(totalSelected)}</span></div>
+                    <div class="flex justify-between items-center border-t pt-4 mt-4"><span class="font-bold text-slate-600">Likutis:</span><span class="font-bold text-2xl ${remaining < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(remaining)}</span></div>
+                `;
+            } else {
+                summaryContent.innerHTML = `
+                    <div class="flex justify-between items-center"><span class="font-medium text-slate-600">Pasirinkta sąskaitų:</span><span class="font-bold text-lg text-slate-800">${selectedInvoices.size}</span></div>
+                    <div class="flex justify-between items-center"><span class="font-medium text-slate-600">Bendra suma:</span><span class="font-bold text-2xl text-blue-600">${formatCurrency(totalSelected)}</span></div>
+                `;
+            }
+            generateBtn.disabled = totalSelected <= 0;
+
+            const supplierTotals = new Map();
+            selectedInvoices.forEach(inv => {
+                const currentTotal = supplierTotals.get(inv.supplierId) || 0;
+                supplierTotals.set(inv.supplierId, currentTotal + inv.amountToPay);
+            });
+
+            supplierSummaryContainer.innerHTML = '';
+            if (supplierTotals.size === 0) {
+                supplierSummaryContainer.innerHTML = `<p class="text-slate-500 text-center">Kol kas nieko nepasirinkta.</p>`;
+                return;
+            }
+            supplierTotals.forEach((total, supplierId) => {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center p-2 rounded-md hover:bg-slate-100';
+                div.innerHTML = `<span class="font-medium text-slate-700">${supplierMap.get(supplierId)}</span><span class="font-bold text-slate-800">${formatCurrency(total)}</span>`;
+                supplierSummaryContainer.appendChild(div);
+            });
+        }
+
+        function handleManualSupplierSelection() {
+            const selectedSupplierIds = Array.from(document.querySelectorAll('#manualSupplierContainer .supplier-checkbox:checked'))
+                .map(cb => parseInt(cb.dataset.supplierId));
+            const invoicesToShow = mockData.invoices.filter(inv => selectedSupplierIds.includes(inv.supplierId));
+            displayInvoices(invoicesToShow);
+        }
+
+        function handleAutoAllocation() {
+            const totalBudget = parseFloat(document.getElementById('autoBudgetAmount').value) || 0;
+            const selectedSupplierIds = Array.from(document.querySelectorAll('#autoSupplierContainer .supplier-checkbox:checked'))
+                .map(cb => parseInt(cb.dataset.supplierId));
+            
+            if (totalBudget <= 0 || selectedSupplierIds.length === 0) {
+                alert("Nurodykite skiriamą sumą ir pasirinkite bent vieną tiekėją.");
+                return;
+            }
+
+            const amountsPerSupplier = new Map();
+            if (distributeSmartRadio.checked) {
+                let suppliersData = selectedSupplierIds.map(id => {
+                    const totalDebt = mockData.invoices
+                        .filter(inv => inv.supplierId === id)
+                        .reduce((sum, inv) => sum + inv.amount, 0);
+                    return { id, totalDebt };
+                });
+
+                let budgetLeft = totalBudget;
+                let share = budgetLeft / suppliersData.length;
+                let stillOwing = [];
+
+                // First pass
+                suppliersData.forEach(s => {
+                    const payment = Math.min(s.totalDebt, share);
+                    amountsPerSupplier.set(s.id, payment);
+                    budgetLeft -= payment;
+                    if (s.totalDebt > share) {
+                        stillOwing.push(s);
+                    }
+                });
+                
+                // Redistribute surplus
+                while (budgetLeft > 0.01 && stillOwing.length > 0) {
+                    let extraShare = budgetLeft / stillOwing.length;
+                    budgetLeft = 0;
+                    const nextOwing = [];
+                    stillOwing.forEach(s => {
+                        const currentPayment = amountsPerSupplier.get(s.id);
+                        const remainingDebt = s.totalDebt - currentPayment;
+                        const extraPayment = Math.min(remainingDebt, extraShare);
+                        
+                        amountsPerSupplier.set(s.id, currentPayment + extraPayment);
+
+                        if (remainingDebt > extraPayment) {
+                            nextOwing.push(s);
+                        } else {
+                            budgetLeft += extraShare - extraPayment;
+                        }
+                    });
+                    stillOwing = nextOwing;
+                }
+
+            } else { // Manual distribution
+                let manuallyEnteredTotal = 0;
+                for (const id of selectedSupplierIds) {
+                    const input = document.querySelector(`#manual_dist_supplier_${id}`);
+                    const amount = parseFloat(input.value) || 0;
+                    amountsPerSupplier.set(id, amount);
+                    manuallyEnteredTotal += amount;
+                }
+                if (Math.abs(manuallyEnteredTotal - totalBudget) > 0.01) {
+                    alert(`Paskirstyta suma (${formatCurrency(manuallyEnteredTotal)}) nesutampa su skirta suma (${formatCurrency(totalBudget)}).`);
+                    return;
+                }
+            }
+
+            selectedInvoices.clear();
+            let allInvoicesToShow = [];
+            
+            amountsPerSupplier.forEach((amountToAllocate, supplierId) => {
+                let allocatedAmount = 0;
+                const supplierInvoices = mockData.invoices.filter(inv => inv.supplierId === supplierId).sort((a, b) => new Date(a.date) - new Date(b.date));
+                allInvoicesToShow.push(...supplierInvoices);
+
+                for (const invoice of supplierInvoices) {
+                    if (allocatedAmount >= amountToAllocate) break;
+                    const remainingToAllocate = amountToAllocate - allocatedAmount;
+                    const amountToPay = Math.min(invoice.amount, remainingToAllocate);
+                    allocatedAmount += amountToPay;
+                    selectedInvoices.set(invoice.id, { supplierId: invoice.supplierId, totalAmount: invoice.amount, amountToPay: amountToPay });
+                }
+            });
+
+            displayInvoices(allInvoicesToShow.sort((a,b) => a.supplierId - b.supplierId || new Date(a.date) - new Date(b.date)));
+            updateAllSummaries();
+        }
+
+        function clearAllSelections() {
+            selectedInvoices.clear();
+            document.querySelectorAll('.supplier-checkbox:checked').forEach(cb => cb.checked = false);
+            displayInvoices([]);
+            updateAllSummaries();
+        }
+
+        function switchMode(mode) {
+            currentMode = mode;
+            manualModeTab.classList.toggle('tab-active', mode === 'manual');
+            autoModeTab.classList.toggle('tab-active', mode === 'auto');
+            manualModeContent.classList.toggle('hidden', mode !== 'manual');
+            autoModeContent.classList.toggle('hidden', mode !== 'auto');
+            clearAllSelections();
+        }
+        
+        function updateManualDistributionUI() {
+            const selectedSupplierIds = Array.from(document.querySelectorAll('#autoSupplierContainer .supplier-checkbox:checked'))
+                .map(cb => parseInt(cb.dataset.supplierId));
+            
+            manualDistributionContainer.innerHTML = '';
+            if (distributeManuallyRadio.checked && selectedSupplierIds.length > 0) {
+                manualDistributionContainer.classList.remove('hidden');
+                selectedSupplierIds.forEach(id => {
+                    const div = document.createElement('div');
+                    div.className = 'grid grid-cols-3 gap-4 items-center';
+                    div.innerHTML = `
+                        <label for="manual_dist_supplier_${id}" class="col-span-2 text-sm font-medium text-slate-700">${supplierMap.get(id)}</label>
+                        <div class="relative"><input type="number" id="manual_dist_supplier_${id}" class="w-full p-2 pl-8 border border-slate-300 rounded-md"><span class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400">€</span></div>
+                    `;
+                    manualDistributionContainer.appendChild(div);
+                });
+            } else {
+                manualDistributionContainer.classList.add('hidden');
+            }
+        }
+
+        // --- Event Listeners ---
+        manualModeTab.addEventListener('click', () => switchMode('manual'));
+        autoModeTab.addEventListener('click', () => switchMode('auto'));
+        manualBudgetInput.addEventListener('input', updateAllSummaries);
+        document.querySelectorAll('#manualSupplierContainer').forEach(c => c.addEventListener('change', handleManualSupplierSelection));
+        autoAllocateBtn.addEventListener('click', handleAutoAllocation);
+        clearAllBtn.addEventListener('click', clearAllSelections);
+        generateBtn.addEventListener('click', () => {
+            if (selectedInvoices.size > 0) {
+                successMessage.classList.remove('hidden');
+                setTimeout(() => { successMessage.classList.add('hidden'); }, 4000);
+            }
+        });
+        
+        document.querySelectorAll('#autoSupplierContainer').forEach(c => c.addEventListener('change', updateManualDistributionUI));
+        distributeSmartRadio.addEventListener('change', updateManualDistributionUI);
+        distributeManuallyRadio.addEventListener('change', updateManualDistributionUI);
+
+        // --- Initial Load ---
+        populateSuppliers();
+        switchMode('manual');
+    </script>
+</body>
+</html>
